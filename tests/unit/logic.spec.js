@@ -25,10 +25,10 @@ function gameWith(name, seed = 1) {
 }
 
 test.describe('the pieces', () => {
-  test('are just the one straight tetromino', () => {
-    const actual = Tetris.PIECES.map((piece) => canonicalKey(cellsOfPiece(piece)));
-    expect(actual).toEqual([canonicalKey([[0, 0], [1, 0], [2, 0], [3, 0]])]);
-    expect(oneSidedPolyominoes(4)).toContain(actual[0]);
+  test('are exactly the 2 triominoes', () => {
+    const actual = Tetris.PIECES.map((piece) => canonicalKey(cellsOfPiece(piece))).sort();
+    expect(actual).toEqual(oneSidedPolyominoes(3));
+    expect(actual).toHaveLength(2);
   });
 
   test('each have their own name and color', () => {
@@ -59,9 +59,9 @@ test.describe('rotation', () => {
   });
 
   test('rotates the falling piece when there is room', () => {
-    const state = gameWith('I');
+    const state = gameWith('L');
     expect(Tetris.rotate(state)).toBe(true);
-    expect(state.current.shape).toEqual(Tetris.parseShape(['..X.', '..X.', '..X.', '..X.']));
+    expect(state.current.shape).toEqual(Tetris.parseShape(['XX', 'X.']));
   });
 
   test('kicks a piece away from the wall when rotating against it', () => {
@@ -80,7 +80,7 @@ test.describe('rotation', () => {
     const state = Tetris.createGame(1);
     Tetris.setBoard(state, Array(8).fill('.XXXXXXXXX'));
     const vertical = Tetris.rotateClockwise(Tetris.parseShape(Tetris.PIECES[pieceIndex('I')].shape));
-    state.current = { type: pieceIndex('I'), shape: vertical, x: -2, y: 16 }; // in the 1-wide well
+    state.current = { type: pieceIndex('I'), shape: vertical, x: -1, y: 17 }; // in the 1-wide well
     const before = JSON.stringify(state.current);
     expect(Tetris.rotate(state)).toBe(false);
     expect(JSON.stringify(state.current)).toBe(before);
@@ -111,15 +111,18 @@ test.describe('a new game', () => {
     }
   });
 
-  test('deals the straight piece every time, whatever the seed', () => {
-    for (const seed of [1, 99, 100, 2 ** 31]) {
+  test('deals the same pieces for the same seed', () => {
+    const deal = (seed) => {
       const state = Tetris.createGame(seed);
+      const types = [];
       for (let i = 0; i < 20; i++) {
-        expect(state.current.type).toBe(pieceIndex('I'));
-        expect(state.nextType).toBe(pieceIndex('I'));
+        types.push(state.current.type);
         Tetris.spawn(state);
       }
-    }
+      return types;
+    };
+    expect(deal(99)).toEqual(deal(99));
+    expect(deal(99)).not.toEqual(deal(100));
   });
 
   test('shows the next piece before it arrives', () => {
@@ -132,27 +135,27 @@ test.describe('a new game', () => {
 
 test.describe('moving', () => {
   test('stops at the walls', () => {
-    const state = gameWith('I'); // columns 3 to 6
+    const state = gameWith('L'); // columns 4 and 5
     let moves = 0;
     while (Tetris.move(state, -1)) moves++;
-    expect(moves).toBe(3);
+    expect(moves).toBe(4);
     moves = 0;
     while (Tetris.move(state, 1)) moves++;
-    expect(moves).toBe(Tetris.BOARD_WIDTH - 4);
+    expect(moves).toBe(Tetris.BOARD_WIDTH - 2);
   });
 
   test('stops at blocks already on the board', () => {
-    const state = gameWith('I');
+    const state = gameWith('L');
     Tetris.setBoard(state, Array(20).fill('X.........'));
     let moves = 0;
     while (Tetris.move(state, -1)) moves++;
-    expect(moves).toBe(2);
+    expect(moves).toBe(3);
   });
 });
 
 test.describe('falling', () => {
   test('gravity moves the piece down one row at a time', () => {
-    const state = gameWith('I');
+    const state = gameWith('L');
     const y = state.current.y;
     Tetris.tick(state);
     Tetris.tick(state);
@@ -160,17 +163,17 @@ test.describe('falling', () => {
   });
 
   test('a piece that has landed locks in place and the next one appears', () => {
-    const state = gameWith('I');
-    for (let i = 0; i < Tetris.BOARD_HEIGHT - 1; i++) Tetris.tick(state);
+    const state = gameWith('L');
+    for (let i = 0; i < Tetris.BOARD_HEIGHT - 2; i++) Tetris.tick(state);
     expect(filledCount(state)).toBe(0);
     Tetris.tick(state); // can't fall further
-    expect(filledCount(state)).toBe(4);
-    expect(state.board[Tetris.BOARD_HEIGHT - 1][4]).toBe(Tetris.PIECES[pieceIndex('I')].color);
+    expect(filledCount(state)).toBe(3);
+    expect(state.board[Tetris.BOARD_HEIGHT - 1][4]).toBe(Tetris.PIECES[pieceIndex('L')].color);
     expect(Math.min(...currentCells(state).map(([, y]) => y))).toBe(0);
   });
 
   test('moving down goes one row at a time and scores 1 point per row', () => {
-    const state = gameWith('I');
+    const state = gameWith('L');
     const y = state.current.y;
     expect(Tetris.softDrop(state)).toBe(true);
     expect(Tetris.softDrop(state)).toBe(true);
@@ -179,19 +182,19 @@ test.describe('falling', () => {
   });
 
   test('moving down a piece that has landed locks it at once', () => {
-    const state = gameWith('I');
-    expect(dropAndLock(state)).toBe(Tetris.BOARD_HEIGHT - 1);
-    expect(state.score).toBe(Tetris.BOARD_HEIGHT - 1);
-    expect(state.board[Tetris.BOARD_HEIGHT - 1].slice(3, 7))
-      .toEqual(Array(4).fill(Tetris.PIECES[pieceIndex('I')].color));
+    const state = gameWith('L');
+    expect(dropAndLock(state)).toBe(Tetris.BOARD_HEIGHT - 2);
+    expect(state.score).toBe(Tetris.BOARD_HEIGHT - 2);
+    expect(state.board[Tetris.BOARD_HEIGHT - 1].slice(4, 6))
+      .toEqual(Array(2).fill(Tetris.PIECES[pieceIndex('L')].color));
     expect(Math.min(...currentCells(state).map(([, y]) => y))).toBe(0); // the next piece is up
   });
 
   test('knows how far the piece can fall before landing on other blocks', () => {
-    const state = gameWith('I');
-    expect(Tetris.dropDistance(state)).toBe(Tetris.BOARD_HEIGHT - 1);
+    const state = gameWith('L');
+    expect(Tetris.dropDistance(state)).toBe(Tetris.BOARD_HEIGHT - 2);
     Tetris.setBoard(state, ['....XX....', '....XX....', '....XX....']);
-    expect(Tetris.dropDistance(state)).toBe(Tetris.BOARD_HEIGHT - 4);
+    expect(Tetris.dropDistance(state)).toBe(Tetris.BOARD_HEIGHT - 5);
   });
 });
 
@@ -219,8 +222,8 @@ test.describe('clearing rows', () => {
   });
 
   test('completing a row clears it and scores for it', () => {
-    const state = gameWith('I'); // flat, in columns 3 to 6
-    Tetris.setBoard(state, ['XXX....XXX']);
+    const state = gameWith('I'); // flat, in columns 3 to 5
+    Tetris.setBoard(state, ['XXX...XXXX']);
     const distance = dropAndLock(state);
     expect(state.lines).toBe(1);
     expect(filledCount(state)).toBe(0);
@@ -230,7 +233,7 @@ test.describe('clearing rows', () => {
 
   test('remembers the board as it was before the rows cleared, for the animation', () => {
     const state = gameWith('I');
-    Tetris.setBoard(state, ['X.........', 'XXX....XXX']);
+    Tetris.setBoard(state, ['X.........', 'XXX...XXXX']);
     dropAndLock(state);
     const { before, rows } = state.lastClear;
     expect(rows).toEqual([19]);
@@ -240,13 +243,13 @@ test.describe('clearing rows', () => {
     expect(state.board[18][0]).toBeNull();
   });
 
-  test('clearing four rows at once scores 800 per level', () => {
+  test('clearing three rows at once, the most a triomino can, scores 500 per level', () => {
     const state = gameWith('I');
-    Tetris.rotate(state); // vertical, in column 5
-    Tetris.setBoard(state, Array(4).fill('XXXXX.XXXX'));
+    Tetris.rotate(state); // vertical, in column 4
+    Tetris.setBoard(state, Array(3).fill('XXXX.XXXXX'));
     dropAndLock(state);
-    expect(state.lines).toBe(4);
-    expect(state.lastClear).toMatchObject({ lines: 4, points: 800, rows: [16, 17, 18, 19] });
+    expect(state.lines).toBe(3);
+    expect(state.lastClear).toMatchObject({ lines: 3, points: 500, rows: [17, 18, 19] });
   });
 
   test('scores more for more rows at once, times the level', () => {
@@ -257,7 +260,7 @@ test.describe('clearing rows', () => {
   test('every 10 rows moves up a level, scored at the old level', () => {
     const state = gameWith('I');
     state.lines = 9;
-    Tetris.setBoard(state, ['XXX....XXX']);
+    Tetris.setBoard(state, ['XXX...XXXX']);
     dropAndLock(state);
     expect(state.level).toBe(2);
     expect(state.lastClear.points).toBe(100);
@@ -283,8 +286,8 @@ test.describe('the end of the game', () => {
 
   test('comes when a piece lands sticking out of the top', () => {
     const state = gameWith('I');
-    Tetris.rotate(state); // vertical, in rows -1 to 2, so its top is above the board
-    Tetris.setBoard(state, Array(Tetris.BOARD_HEIGHT - 3).fill('XXXXXXXXX.')); // rows 3 and down
+    Tetris.rotate(state); // vertical, in rows -1 to 1, so its top is above the board
+    Tetris.setBoard(state, Array(Tetris.BOARD_HEIGHT - 2).fill('XXXXXXXXX.')); // rows 2 and down
     dropAndLock(state);
     expect(state.over).toBe(true);
   });
@@ -303,7 +306,7 @@ test.describe('the end of the game', () => {
 
 test.describe('pausing', () => {
   test('freezes the piece until unpaused', () => {
-    const state = gameWith('I');
+    const state = gameWith('L');
     Tetris.togglePause(state);
     const before = JSON.stringify(state.current);
     expect(Tetris.move(state, 1)).toBe(false);

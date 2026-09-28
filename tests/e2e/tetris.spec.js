@@ -36,8 +36,8 @@ const isEmpty = ([r, g, b]) => Math.max(r, g, b) < 40;
 const isBlock = (color) => !isWhite(color) && !isEmpty(color);
 
 test('shows the board, the controls, and a prompt to start', async ({ page }) => {
-  await expect(page).toHaveTitle('Tetris: Very Silly Version');
-  await expect(page.locator('.subtitle')).toHaveText('the very silly version');
+  await expect(page).toHaveTitle('Tetris: Triominoes');
+  await expect(page.locator('.subtitle')).toHaveText('with triominoes');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Tetris');
 
   const box = await page.locator('#board').boundingBox();
@@ -67,7 +67,7 @@ test('the Start button starts the game and gets out of the way', async ({ page }
 
 test('the arrow keys and A/D move the piece left and right', async ({ page }) => {
   await startGame(page);
-  await setPiece(page, 'I');
+  await setPiece(page, 'L');
   const { x } = await currentPiece(page);
 
   await page.keyboard.press('ArrowLeft');
@@ -82,18 +82,18 @@ test('the arrow keys and A/D move the piece left and right', async ({ page }) =>
 
 test('Up and W rotate the piece clockwise', async ({ page }) => {
   await startGame(page);
-  await setPiece(page, 'I');
+  await setPiece(page, 'L');
   const shape = (rows) => rows.map((row) => [...row].map((ch) => ch === 'X'));
 
   await page.keyboard.press('ArrowUp');
-  expect((await currentPiece(page)).shape).toEqual(shape(['..X.', '..X.', '..X.', '..X.']));
+  expect((await currentPiece(page)).shape).toEqual(shape(['XX', 'X.']));
   await page.keyboard.press('KeyW');
-  expect((await currentPiece(page)).shape).toEqual(shape(['....', '....', 'XXXX', '....']));
+  expect((await currentPiece(page)).shape).toEqual(shape(['XX', '.X']));
 });
 
 test('Down and S move the piece down a row, for a point each', async ({ page }) => {
   await startGame(page);
-  await setPiece(page, 'I');
+  await setPiece(page, 'L');
   const { y } = await currentPiece(page);
 
   await page.keyboard.press('ArrowDown');
@@ -105,31 +105,31 @@ test('Down and S move the piece down a row, for a point each', async ({ page }) 
 
 test('pressing Down on a piece that has landed locks it in place', async ({ page }) => {
   await startGame(page);
-  await setPiece(page, 'I');
+  await setPiece(page, 'L');
   await dropAndLock(page);
 
-  expect(await filledCount(page)).toBe(4);
+  expect(await filledCount(page)).toBe(3);
   expect(await page.evaluate(() => game.state.board[19][4])).not.toBeNull();
-  await expect(page.locator('#score')).toHaveText('19'); // 1 point for each of 19 rows
+  await expect(page.locator('#score')).toHaveText('18'); // 1 point for each of 18 rows
   const next = await currentPiece(page);
   expect(Math.min(...next.shape.map((row, r) => (row.some(Boolean) ? r : 99))) + next.y).toBe(0);
 });
 
 test('holding Down moves the piece to the bottom but does not lock it', async ({ page }) => {
   await startGame(page);
-  await setPiece(page, 'I');
+  await setPiece(page, 'L');
   for (let i = 0; i < 25; i++) await page.keyboard.down('ArrowDown'); // repeats after the first
   await page.keyboard.up('ArrowDown');
   expect((await currentPiece(page)).y).toBe(18);
   expect(await filledCount(page)).toBe(0);
 
   await page.keyboard.press('ArrowDown'); // a fresh press does lock it
-  expect(await filledCount(page)).toBe(4);
+  expect(await filledCount(page)).toBe(3);
 });
 
 test('completing a row clears it and updates the score and lines', async ({ page }) => {
   await startGame(page);
-  await setBoard(page, ['XXX....XXX']);
+  await setBoard(page, ['XXX...XXXX']);
   await setPiece(page, 'I');
 
   await dropAndLock(page);
@@ -141,7 +141,7 @@ test('completing a row clears it and updates the score and lines', async ({ page
 
 test('a cleared row flashes white and fades, then the blocks above slide down', async ({ page }) => {
   await startGame(page);
-  await setBoard(page, ['X.........', 'XXX....XXX']);
+  await setBoard(page, ['X.........', 'XXX...XXXX']);
   await setPiece(page, 'I');
   await dropAndLock(page);
   expect(await page.evaluate(() => game.clearing)).toBe(true);
@@ -189,7 +189,7 @@ test('the next piece is shown before it arrives', async ({ page }) => {
 
 test('pieces fall on their own, and faster at higher levels', async ({ page }) => {
   await startGame(page);
-  await setPiece(page, 'I');
+  await setPiece(page, 'L');
   const { y } = await currentPiece(page);
 
   await page.clock.runFor(3100); // 1 row per second at level 1
@@ -202,7 +202,7 @@ test('pieces fall on their own, and faster at higher levels', async ({ page }) =
 
 test('P pauses and resumes the game', async ({ page }) => {
   await startGame(page);
-  await setPiece(page, 'I');
+  await setPiece(page, 'L');
   const before = await currentPiece(page);
 
   await page.keyboard.press('KeyP');
@@ -223,8 +223,8 @@ test('P pauses and resumes the game', async ({ page }) => {
 
 test('the game ends when the pile reaches the top, and Enter starts over', async ({ page }) => {
   await startGame(page);
-  await setBoard(page, Array(19).fill('XXXXXXXXX.'));
-  await setPiece(page, 'I');
+  await setBoard(page, Array(18).fill('XXXXXXXXX.'));
+  await setPiece(page, 'L');
 
   await page.keyboard.press('ArrowDown');
   await expect(overlay(page).getByRole('heading')).toHaveText('Game over');
@@ -239,8 +239,8 @@ test('the game ends when the pile reaches the top, and Enter starts over', async
 
 test('the Play again button starts over after a game ends', async ({ page }) => {
   await startGame(page);
-  await setBoard(page, Array(19).fill('XXXXXXXXX.'));
-  await setPiece(page, 'I');
+  await setBoard(page, Array(18).fill('XXXXXXXXX.'));
+  await setPiece(page, 'L');
   await page.keyboard.press('ArrowDown');
 
   await page.getByRole('button', { name: 'Play again' }).click();
@@ -256,13 +256,15 @@ test('the arrow keys do not scroll the page', async ({ page }) => {
   expect(await page.evaluate(() => scrollY)).toBe(0);
 });
 
-test('every piece that comes down is the straight one', async ({ page }) => {
+test('every piece that comes down is a triomino, and both kinds show up', async ({ page }) => {
   await startGame(page, 11);
+  const kinds = new Set();
   for (let i = 0; i < 12; i++) {
     const piece = await currentPiece(page);
-    expect(piece.shape).toEqual(Array.from({ length: 4 }, (_, r) => Array(4).fill(r === 1)));
-    expect(await page.evaluate(() => game.state.nextType)).toBe(piece.type);
+    expect(piece.shape.flat().filter(Boolean)).toHaveLength(3);
+    kinds.add(piece.type);
     await setBoard(page, []); // keep the board clear so the game never ends
     await dropAndLock(page);
   }
+  expect(kinds.size).toBe(2);
 });

@@ -8,9 +8,10 @@
 
   // The pieces, drawn in the orientation they start in. Each shape sits in a square box so that
   // rotating the box turns the piece about its center.
-  // The very silly version: every piece is the straight I tetromino, four squares in a line.
+  // Triominoes are made of three squares. There are only two of them.
   const PIECES = [
-    { name: 'I', color: '#38c8ee', shape: ['....', 'XXXX', '....', '....'] },
+    { name: 'I', color: '#38c8ee', shape: ['...', 'XXX', '...'] },
+    { name: 'L', color: '#f49a30', shape: ['X.', 'XX'] },
   ];
 
   // Points for clearing 1, 2, 3, or 4 rows at once, multiplied by the current level.
