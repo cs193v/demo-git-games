@@ -2,9 +2,44 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>What game should we play today?</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TetraVex</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <p>What game should we play today?</p>
+  <header class="top">
+    <h1>TetraVex</h1>
+    <p class="help">
+      Each tile has a number on each side. Drag the tiles on the right into the grid on the left so
+      that wherever two tiles touch, the numbers on the touching sides match. There's exactly one
+      way to fit them all. Move them around as much as you like: drop a tile on another one to swap
+      them, or drag it back to the right.
+    </p>
+  </header>
+
+  <main class="field">
+    <section class="half">
+      <h2>Puzzle</h2>
+      <div class="frame">
+        <div id="board" class="grid board" aria-label="Puzzle board"></div>
+      </div>
+    </section>
+
+    <section class="half">
+      <h2>Tiles</h2>
+      <div class="frame">
+        <div id="tray" class="grid tray" aria-label="Unplaced tiles"></div>
+        <div id="win" class="win hidden" aria-live="polite">
+          <h3>You did it!</h3>
+          <p id="win-text"></p>
+          <button id="next" type="button">New puzzle</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="logic.js"></script>
+  <script src="ui.js"></script>
 </body>
 </html>

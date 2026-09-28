@@ -1,0 +1,11 @@
+{
+  "name": "git-lecture-demo-game",
+  "private": true,
+  "description": "A small browser game. Open index.html to play it. Run `npm test` for its unit and end-to-end tests.",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.62.1"
+  }
+}
