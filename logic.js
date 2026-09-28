@@ -52,13 +52,8 @@
     return next;
   }
 
-  // Whether every square of the board has its own piece. `lookAlikes` lists groups of pieces that
-  // look exactly the same, like the plain patches of a logo: any of them is right in any of their
-  // squares.
-  function isSolved(puzzle, lookAlikes = []) {
-    const looksRight = (piece, square) => piece === square ||
-      lookAlikes.some((group) => group.includes(piece) && group.includes(square));
-    return puzzle.board.every((piece, square) => piece !== null && looksRight(piece, square));
+  function isSolved(puzzle) {
+    return puzzle.board.every((piece, square) => piece === square);
   }
 
   // Which row and column of the picture a piece shows.

@@ -5,9 +5,12 @@
   'use strict';
 
   // Each name finishes the sentence "That's ...!"
-  // lookAlikes lists pieces that look exactly the same: in the logo, three are plain maroon.
   const PICTURES = [
-    { file: 'images/cs193v.png', name: 'the CS193V logo', lookAlikes: [[2, 7, 14]] },
+    { file: 'images/kitten.jpg', name: 'a kitten' },
+    { file: 'images/sea-otter.jpg', name: 'a sea otter' },
+    { file: 'images/red-panda.jpg', name: 'a red panda' },
+    { file: 'images/ducklings.jpg', name: 'some ducklings' },
+    { file: 'images/hedgehog.jpg', name: 'a hedgehog' },
   ];
 
   if (typeof module === 'object' && module.exports) module.exports = PICTURES;

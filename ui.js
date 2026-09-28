@@ -138,7 +138,7 @@
     glide(piece, droppedAt);
     if (other && other !== piece) glide(other, otherWasAt);
 
-    if (Jigsaw.isSolved(puzzle, currentPicture().lookAlikes)) finish();
+    if (Jigsaw.isSolved(puzzle)) finish();
   }
 
   // Animates an element from where it was (`from`, a DOMRect) to where it is now. Board squares

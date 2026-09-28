@@ -95,22 +95,6 @@ test.describe('solving', () => {
     expect(Jigsaw.isSolved({ board: swapped, tray: Array(16).fill(null) })).toBe(false);
   });
 
-  test('lets pieces that look alike go in each other\'s squares', () => {
-    const rotated = ALL_PIECES.slice();
-    [rotated[2], rotated[7], rotated[14]] = [7, 14, 2];
-    const puzzle = { board: rotated, tray: Array(16).fill(null) };
-    expect(Jigsaw.isSolved(puzzle, [[2, 7, 14]])).toBe(true);
-    expect(Jigsaw.isSolved(puzzle)).toBe(false); // unless they're said to look alike
-  });
-
-  test('still needs a look-alike to be in one of its own group\'s squares', () => {
-    const swapped = ALL_PIECES.slice();
-    [swapped[2], swapped[3]] = [3, 2]; // 3 isn't one of the look-alikes
-    expect(Jigsaw.isSolved({ board: swapped, tray: Array(16).fill(null) }, [[2, 7, 14]])).toBe(false);
-    const board15 = ALL_PIECES.map((piece) => (piece === 7 ? null : piece));
-    expect(Jigsaw.isSolved({ board: board15, tray: [7, ...Array(15).fill(null)] }, [[2, 7, 14]])).toBe(false);
-  });
-
   test('piece n shows row n / 4, column n % 4 of the picture', () => {
     expect([Jigsaw.pieceRow(0), Jigsaw.pieceCol(0)]).toEqual([0, 0]);
     expect([Jigsaw.pieceRow(6), Jigsaw.pieceCol(6)]).toEqual([1, 2]);

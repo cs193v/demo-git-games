@@ -1,6 +1,4 @@
 // End-to-end tests: open index.html in a real (headless) browser and do the puzzles.
-const fs = require('fs');
-const path = require('path');
 const { test, expect, GAME_URL } = require('../helpers/page.js');
 
 // The picture files, from the same list the game uses.
@@ -38,8 +36,8 @@ const pieceShownIn = (page, area, index) =>
     .evaluateAll((pieces) => (pieces.length ? Number(pieces[0].dataset.piece) : null));
 
 test('shows an empty board on the left and 16 pieces on the right', async ({ page }) => {
-  await expect(page).toHaveTitle('CS193V Jigsaw');
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('CS193V Jigsaw');
+  await expect(page).toHaveTitle('Animal Jigsaw');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Animal Jigsaw');
   await expect(page.locator('.help')).toContainText('Drag the pieces');
   await expect(page.locator('#board .slot')).toHaveCount(16);
   await expect(page.locator('#board .piece')).toHaveCount(0);
@@ -155,51 +153,32 @@ test('finishing the picture says so, and the pieces stay put', async ({ page }) 
   await solve(page);
   await expect(page.locator('#win')).toBeVisible();
   await expect(page.locator('#win h3')).toHaveText('You did it!');
-  await expect(page.locator('#win-text')).toHaveText("That's the CS193V logo!");
-  await expect(page.getByRole('button', { name: 'Play again' })).toBeVisible();
+  await expect(page.locator('#win-text')).toHaveText(/^That's .+!$/);
+  await expect(page.getByRole('button', { name: 'Next puzzle' })).toBeVisible();
   for (let i = 0; i < 16; i++) expect(await pieceShownIn(page, 'board', i)).toBe(i);
 
   await drag(page, ['board', 0], ['board', 5]); // too late to move anything
   expect((await puzzle(page)).board).toEqual([...Array(16).keys()]);
 });
 
-test('Play again brings the logo back, freshly shuffled', async ({ page }) => {
-  const firstShuffle = (await puzzle(page)).tray;
+test('Next puzzle brings a different picture, freshly shuffled', async ({ page }) => {
+  const first = await page.evaluate(() => game.picture);
   await solve(page);
-  await page.getByRole('button', { name: 'Play again' }).click();
+  await page.getByRole('button', { name: 'Next puzzle' }).click();
   await expect(page.locator('#win')).toBeHidden();
-  expect(await page.evaluate(() => game.picture)).toBe(PICTURES[0]);
+  expect(await page.evaluate(() => game.picture)).not.toBe(first);
   await expect(page.locator('#board .piece')).toHaveCount(0);
   await expect(page.locator('#tray .piece')).toHaveCount(16);
-  expect((await puzzle(page)).tray).not.toEqual(firstShuffle);
   expect(await page.evaluate(() => game.solved)).toBe(false);
 });
 
-test('the three plain maroon pieces can go in any of their three squares', async ({ page }) => {
-  // Pieces 2, 7 and 14 look exactly alike, so a mix-up among them still finishes the picture.
-  const { tray } = await puzzle(page);
-  const swap = { 2: 7, 7: 14, 14: 2 };
-  for (let i = 0; i < 16; i++) await drag(page, ['tray', i], ['board', swap[tray[i]] ?? tray[i]]);
-  expect((await puzzle(page)).board[2]).toBe(14);
-  await expect(page.locator('#win')).toBeVisible();
-});
-
-test('the logo is trimmed to its rounded square, on white', async ({ page }) => {
-  const file = path.join(__dirname, '..', '..', 'images', 'cs193v.png');
-  const dataUrl = `data:image/png;base64,${fs.readFileSync(file).toString('base64')}`;
-  const colorAt = await page.evaluate(async (src) => {
-    const image = new Image();
-    image.src = src;
-    await image.decode();
-    const canvas = document.createElement('canvas');
-    canvas.width = image.width;
-    canvas.height = image.height;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(image, 0, 0);
-    const at = (x, y) => [...ctx.getImageData(x, y, 1, 1).data];
-    return { corner: at(2, 2), topEdge: at(400, 3), leftEdge: at(3, 400), middle: at(700, 200) };
-  }, dataUrl);
-  expect(colorAt.corner).toEqual([255, 255, 255, 255]); // white, not see-through
-  const isMaroon = ([r, g, b]) => r > 100 && r < 160 && g < 30 && b < 30;
-  for (const spot of [colorAt.topEdge, colorAt.leftEdge, colorAt.middle]) expect(isMaroon(spot)).toBe(true);
+test('shows every picture before repeating, never the same one twice in a row', async ({ page }) => {
+  const shown = [];
+  for (let i = 0; i < PICTURES.length + 2; i++) { // a whole round, and into the next one
+    shown.push(await page.evaluate(() => game.picture));
+    await solve(page);
+    await page.getByRole('button', { name: 'Next puzzle' }).click();
+  }
+  expect([...shown.slice(0, PICTURES.length)].sort()).toEqual([...PICTURES].sort());
+  for (let i = 1; i < shown.length; i++) expect(shown[i]).not.toBe(shown[i - 1]);
 });
