@@ -157,63 +157,16 @@ test.describe('gravity', () => {
 });
 
 test.describe('refilling', () => {
-  // Refills the empty squares of a board, the way cascadeStep does.
-  function refill(rows, seed = 5) {
-    const b = board(rows);
-    const cells = Gumdrop.emptyCells(b);
-    const colors = Gumdrop.chooseRefillColors(b, cells, Gumdrop.makeRng(seed));
-    cells.forEach(([row, col], i) => { b[row][col] = colors[i]; });
-    return { colors, after: b };
-  }
-
   test('picks one ordinary color for each empty square', () => {
-    const { colors } = refill(edited(NO_MOVES, { '0,0': '.', '0,1': '.', '1,1': '.' }));
+    const colors = Gumdrop.chooseRefillColors(null, [[0, 0], [0, 1], [1, 1]], Gumdrop.makeRng(5));
     expect(colors).toHaveLength(3);
     for (const color of colors) expect(Number.isInteger(color) && color >= 0 && color < 6).toBe(true);
   });
 
-  test('makes a match from three empty squares in a row', () => {
-    for (let seed = 1; seed <= 20; seed++) {
-      const { after } = refill(edited(NO_MOVES, { '0,2': '.', '0,3': '.', '0,4': '.' }), seed);
-      expect(Gumdrop.findRuns(after).length).toBeGreaterThan(0);
-    }
-  });
-
-  test('makes a match from three empty squares at the top of a column', () => {
-    for (let seed = 1; seed <= 20; seed++) {
-      const { after } = refill(edited(NO_MOVES, { '0,5': '.', '1,5': '.', '2,5': '.' }), seed);
-      expect(Gumdrop.findRuns(after).length).toBeGreaterThan(0);
-    }
-  });
-
-  test('finds the one color that finishes a line, when only one square is empty', () => {
-    // (0, 1) and (0, 2) are yellow, so only a yellow in (0, 0) makes a match.
-    const rows = edited(NO_MOVES, { '0,0': '.', '0,1': 'Y', '0,2': 'Y' });
-    expect(Gumdrop.findRuns(board(rows))).toEqual([]);
-    for (let seed = 1; seed <= 10; seed++) {
-      expect(refill(rows, seed).colors).toEqual([Gumdrop.COLOR_LETTERS.indexOf('Y')]);
-    }
-  });
-
-  test('still varies the colors from one refill to the next', () => {
-    const rows = NO_MOVES.map((row, r) => (r < 3 ? '........' : row));
-    const fills = new Set();
-    for (let seed = 1; seed <= 10; seed++) fills.add(refill(rows, seed).colors.join(''));
-    expect(fills.size).toBeGreaterThan(5);
-  });
-
-  test('prefers longer lines, crossing lines, and several matches at once', () => {
-    const line3 = board(WITH_MATCH);
-    const line4 = board(edited(NO_MOVES, { '0,0': 'G', '1,0': 'G', '2,0': 'G', '3,0': 'G' }));
-    const cross = board(edited(NO_MOVES, { '5,0': 'O', '6,0': 'O', '7,0': 'O', '7,1': 'O', '7,2': 'O' }));
-    const twoLines = board(edited(WITH_MATCH, { '0,0': 'G', '1,0': 'G', '2,0': 'G' }));
-    expect(Gumdrop.findRuns(twoLines)).toHaveLength(2);
-
-    expect(Gumdrop.excitement(board(NO_MOVES))).toBe(0);
-    expect(Gumdrop.excitement(line3)).toBeGreaterThan(0);
-    expect(Gumdrop.excitement(line4)).toBeGreaterThan(Gumdrop.excitement(line3));
-    expect(Gumdrop.excitement(twoLines)).toBeGreaterThan(2 * Gumdrop.excitement(line3));
-    expect(Gumdrop.excitement(cross)).toBeGreaterThan(Gumdrop.excitement(twoLines));
+  test('picks the colors at random', () => {
+    const rng = Gumdrop.makeRng(9);
+    const colors = Gumdrop.chooseRefillColors(null, Array(600).fill([0, 0]), rng);
+    for (const count of colorCounts([colors])) expect(count).toBeGreaterThan(60);
   });
 });
 
@@ -255,27 +208,18 @@ test.describe('chain reactions', () => {
     expect(second.points).toBe(10 * second.matched.length * 2);
   });
 
-  test('never run out: each link sets up the next, and the points add up', () => {
+  test('keep going until nothing matches, adding up the points', () => {
     const state = gameWith(WITH_MATCH, 7);
     let total = 0;
-    for (let link = 1; link <= 40; link++) {
-      const step = Gumdrop.cascadeStep(state);
-      expect(step, `link ${link}`).not.toBeNull();
-      expect(step.chain).toBe(link);
+    let links = 0;
+    for (let step; (step = Gumdrop.cascadeStep(state)); links++) {
       total += step.points;
+      expect(links).toBeLessThan(50);
     }
+    expect(links).toBeGreaterThanOrEqual(2);
     expect(state.score).toBe(total);
-  });
-
-  test('keep going after any first move, in any game', () => {
-    for (let seed = 1; seed <= 10; seed++) {
-      const state = Gumdrop.createGame(seed);
-      const [a, b] = Gumdrop.findMoves(state.board)[0];
-      Gumdrop.swap(state, a, b);
-      for (let link = 1; link <= 25; link++) {
-        expect(Gumdrop.cascadeStep(state), `game ${seed}, link ${link}`).not.toBeNull();
-      }
-    }
+    expect(state.chain).toBe(links);
+    expect(Gumdrop.findRuns(state.board)).toEqual([]);
   });
 });
 

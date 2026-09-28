@@ -172,73 +172,10 @@
     return cells;
   }
 
-  // How exciting the matches on a board are: longer lines, L and T shapes, and several matches at
-  // once all count for more. 0 means there's nothing to match.
-  function excitement(board) {
-    const runs = findRuns(board);
-    if (runs.length === 0) return 0;
-    let score = 0;
-    for (const run of runs) score += run.length >= 5 ? 12 : run.length === 4 ? 7 : 3;
-    const crossings = runs.reduce((total, run) => total + run.length, 0) - matchedCells(runs).length;
-    return score + 2 * (runs.length - 1) + 4 * crossings;
-  }
-
-  function filled(board, cells, colors) {
-    const next = copyBoard(board);
-    cells.forEach(([row, col], i) => { next[row][col] = colors[i]; });
-    return next;
-  }
-
-  // Ways to color a few of the empty squares that are sure to make a match, as lists of
-  // [index into cells, color]. There's always at least one: a match across leaves three or more
-  // empty squares side by side along the top row, and a match down leaves three or more stacked at
-  // the top of a column.
-  function sureMatches(board, cells, rng) {
-    const index = new Map(cells.map(([row, col], i) => [`${row},${col}`, i]));
-    const at = (row, col) => index.get(`${row},${col}`);
-    const color = (row, col) => (inBounds([row, col]) ? board[row][col] : null);
-    const ways = [];
-    for (const [row, col] of cells) {
-      const newColor = randomColor(rng);
-      // Three new gumdrops in a line, all one color.
-      for (const [dr, dc] of [[0, 1], [1, 0]]) {
-        const line = [0, 1, 2].map((k) => at(row + k * dr, col + k * dc));
-        if (line.every((i) => i !== undefined)) ways.push(line.map((i) => [i, newColor]));
-      }
-      // One new gumdrop that finishes a line with two gumdrops already on the board.
-      for (const [[r1, c1], [r2, c2]] of [
-        [[row, col + 1], [row, col + 2]], [[row, col - 1], [row, col - 2]],
-        [[row, col - 1], [row, col + 1]], [[row + 1, col], [row + 2, col]],
-      ]) {
-        const existing = color(r1, c1);
-        if (existing !== null && existing === color(r2, c2)) ways.push([[at(row, col), existing]]);
-      }
-    }
-    return ways;
-  }
-
-  // Picks a color for each new gumdrop that drops in to fill the empty squares. In this version
-  // they always set off another match if they can, and the most exciting one that can be found:
-  // try lots of random fills, plus ones that are sure to match, and keep the best.
+  // Picks a color for each new gumdrop that drops in to fill the empty squares. Here the colors
+  // are simply random.
   function chooseRefillColors(board, cells, rng) {
-    const fills = [];
-    for (let i = 0; i < 300; i++) fills.push(cells.map(() => randomColor(rng)));
-    for (const way of sureMatches(board, cells, rng)) {
-      const colors = cells.map(() => randomColor(rng));
-      for (const [i, color] of way) colors[i] = color;
-      fills.push(colors);
-    }
-
-    let best = null;
-    let bestScore = -1;
-    for (const colors of fills) {
-      const score = excitement(filled(board, cells, colors)) + rng(); // rng() varies the tiebreaks
-      if (score > bestScore) {
-        best = colors;
-        bestScore = score;
-      }
-    }
-    return best;
+    return cells.map(() => randomColor(rng));
   }
 
   function pointsFor(count, chain) {
@@ -298,7 +235,7 @@
     SIZE, COLORS, POINTS_PER_GUMDROP, COLOR_LETTERS,
     makeRng, parseBoard, formatBoard, inBounds, isAdjacent, findRuns, matchedCells, canSwap,
     findMoves, hasMoves, createBoard, createGame, swap, applyGravity, emptyCells,
-    excitement, chooseRefillColors, pointsFor, cascadeStep, reshuffle,
+    chooseRefillColors, pointsFor, cascadeStep, reshuffle,
   };
 
   if (typeof module === 'object' && module.exports) module.exports = Gumdrop;

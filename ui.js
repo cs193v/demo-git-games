@@ -42,7 +42,6 @@
   const timeBar = document.getElementById('time-bar');
   const scoreText = document.getElementById('score');
   const bestText = document.getElementById('best');
-  const chainText = document.getElementById('chain');
 
   canvas.width = canvas.height = SIZE * CELL;
 
@@ -112,7 +111,6 @@
     }
     scoreText.textContent = state.score.toLocaleString();
     bestText.textContent = best.toLocaleString();
-    chainText.textContent = state.chain > 0 ? `×${state.chain}` : '–';
     timeText.textContent = Math.ceil(timeLeft / 1000);
     timeBar.style.width = `${(100 * timeLeft) / GAME_MS}%`;
     timePanel.classList.toggle('hurry', !over && timeLeft <= HURRY_MS);

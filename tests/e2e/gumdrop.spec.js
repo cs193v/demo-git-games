@@ -68,10 +68,8 @@ test.describe('a game', () => {
   });
 
   test('shows the board, the clock, the score, and how to play', async ({ page }) => {
-    await expect(page).toHaveTitle('Gumdrop Swap: Chain Reactions');
+    await expect(page).toHaveTitle('Gumdrop Swap');
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Gumdrop Swap');
-    await expect(page.locator('.subtitle')).toHaveText('Chain reaction edition');
-    await expect(page.locator('#chain')).toHaveText('–');
     const box = await page.locator('#board').boundingBox();
     expect(box.height).toBeGreaterThan(400);
     expect(box.width).toBeCloseTo(box.height, 0);
@@ -95,6 +93,9 @@ test.describe('a game', () => {
     await expect(page.locator('.popup').first()).toHaveText('+30');
     await expect(page.locator('#score')).toHaveText(/^\d/);
     expect(await score(page)).toBeGreaterThanOrEqual(30);
+
+    await waitForBoard(page);
+    expect(await boardIsReady(page)).toBe(true);
   });
 
   test('a chain reaction scores more for each link, and says so', async ({ page }) => {
@@ -102,24 +103,10 @@ test.describe('a game', () => {
     await drag(page, [6, 2], [7, 2]);
     await page.clock.runFor(900); // into the second link: the purples that fell into line
     await expect(page.locator('.popup', { hasText: 'Chain ×2!' })).toBeVisible();
-    await expect(page.locator('#chain')).toHaveText('×2');
+    await waitForBoard(page);
     expect(await score(page)).toBeGreaterThanOrEqual(30 + 60);
+    expect(await page.evaluate(() => game.state.chain)).toBeGreaterThanOrEqual(2);
     await expect(page.locator('#score')).toHaveText((await score(page)).toLocaleString('en-US'));
-  });
-
-  test('one swap sets off a chain reaction that lasts until time runs out', async ({ page }) => {
-    await setBoard(page, ONE_SWAP_AWAY);
-    await drag(page, [6, 2], [7, 2]);
-    await page.clock.runFor(20_000);
-    expect(await page.evaluate(() => game.busy)).toBe(true); // still going
-    const chain = await page.evaluate(() => game.state.chain);
-    expect(chain).toBeGreaterThanOrEqual(20);
-    await expect(page.locator('#chain')).toHaveText(`×${chain}`);
-
-    await page.clock.runFor(40_500);
-    await expect(page.locator('#overlay')).toBeVisible();
-    expect(await page.evaluate(() => game.busy)).toBe(false);
-    expect(await page.evaluate(() => game.state.chain)).toBeGreaterThan(60);
   });
 
   test('works dragging up, down, left, or right', async ({ page }) => {
@@ -133,7 +120,7 @@ test.describe('a game', () => {
       await page.evaluate(() => game.newGame(1));
       await setBoard(page, rows);
       await drag(page, from, to);
-      await page.clock.runFor(300); // swapped, and the first match is popping
+      await waitForBoard(page);
       expect(await score(page), `dragging from ${from} to ${to}`).toBeGreaterThan(0);
     }
   });
@@ -172,9 +159,7 @@ test.describe('a game', () => {
     await drag(page, [6, 2], [7, 2]);
     await page.clock.runFor(300);
     await drag(page, [3, 3], [3, 4]); // ignored: still busy with the first move
-    await page.clock.runFor(2000);
-    await drag(page, [4, 4], [4, 5]); // still busy: the chain reaction never stops
-    await page.clock.runFor(2000);
+    await waitForBoard(page);
     expect(await page.evaluate(() => window.swaps)).toBe(1);
   });
 
@@ -204,11 +189,11 @@ test.describe('a game', () => {
   test('when time runs out, the game ends and offers to play again', async ({ page }) => {
     await setBoard(page, ONE_SWAP_AWAY);
     await drag(page, [6, 2], [7, 2]);
-    await page.clock.runFor(2000);
+    await waitForBoard(page);
+    const points = await score(page);
 
     await page.clock.fastForward(60_000);
     await page.clock.runFor(100);
-    const points = await score(page);
     await expect(page.locator('#overlay')).toBeVisible();
     await expect(page.locator('#overlay h2')).toHaveText("Time's up!");
     await expect(page.locator('#final-score')).toHaveText(`You scored ${points.toLocaleString('en-US')} points.`);
@@ -246,15 +231,14 @@ test.describe('a game', () => {
   test('keeps the high score, even after the page is closed', async ({ page }) => {
     await setBoard(page, ONE_SWAP_AWAY);
     await drag(page, [6, 2], [7, 2]);
-    await page.clock.runFor(2000);
-    // It goes up as soon as you pass it.
-    await expect(page.locator('#best')).toHaveText((await score(page)).toLocaleString('en-US'));
+    await waitForBoard(page);
+    const points = await score(page);
+    const shown = points.toLocaleString('en-US');
+    await expect(page.locator('#best')).toHaveText(shown); // it goes up as soon as you pass it
 
     await page.clock.fastForward(60_000);
     await page.clock.runFor(100);
     await expect(page.locator('#new-best')).toBeVisible();
-    const shown = (await score(page)).toLocaleString('en-US');
-    await expect(page.locator('#best')).toHaveText(shown);
 
     // A second game that scores nothing is no new record.
     await page.getByRole('button', { name: 'Play again?' }).click();
