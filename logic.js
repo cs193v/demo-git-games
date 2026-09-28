@@ -3,19 +3,37 @@
 (function () {
   'use strict';
 
-  const BOARD_WIDTH = 10;
+  const BOARD_WIDTH = 12;
   const BOARD_HEIGHT = 20;
 
   // The pieces, drawn in the orientation they start in. Each shape sits in a square box so that
   // rotating the box turns the piece about its center.
-  // Triominoes are made of three squares. There are only two of them.
+  // The harder version: every piece is a pentomino, five squares joined edge to edge. There are 12
+  // shapes, and 6 of them have mirror images that no rotation can reach, making 18 pieces in all.
+  // The mirror images have lowercase names and lighter colors.
   const PIECES = [
-    { name: 'I', color: '#38c8ee', shape: ['...', 'XXX', '...'] },
-    { name: 'L', color: '#f49a30', shape: ['X.', 'XX'] },
+    { name: 'I', color: '#38c8ee', shape: ['.....', '.....', 'XXXXX', '.....', '.....'] },
+    { name: 'T', color: '#a660e6', shape: ['XXX', '.X.', '.X.'] },
+    { name: 'U', color: '#4270e8', shape: ['X.X', 'XXX', '...'] },
+    { name: 'V', color: '#e05cc0', shape: ['X..', 'X..', 'XXX'] },
+    { name: 'W', color: '#b8845a', shape: ['X..', 'XX.', '.XX'] },
+    { name: 'X', color: '#c9ccd9', shape: ['.X.', 'XXX', '.X.'] },
+    { name: 'F', color: '#ef5350', shape: ['.XX', 'XX.', '.X.'] },
+    { name: 'f', color: '#f59390', shape: ['XX.', '.XX', '.X.'] },
+    { name: 'L', color: '#f49a30', shape: ['X...', 'XXXX', '....', '....'] },
+    { name: 'l', color: '#f8c07a', shape: ['...X', 'XXXX', '....', '....'] },
+    { name: 'N', color: '#f4d03f', shape: ['XX..', '.XXX', '....', '....'] },
+    { name: 'n', color: '#f8e38a', shape: ['..XX', 'XXX.', '....', '....'] },
+    { name: 'P', color: '#5ccf5a', shape: ['XX.', 'XXX', '...'] },
+    { name: 'p', color: '#9be299', shape: ['.XX', 'XXX', '...'] },
+    { name: 'Y', color: '#2fbf9f', shape: ['.X..', 'XXXX', '....', '....'] },
+    { name: 'y', color: '#7dd9c4', shape: ['..X.', 'XXXX', '....', '....'] },
+    { name: 'Z', color: '#a5b83a', shape: ['XX.', '.X.', '.XX'] },
+    { name: 'z', color: '#cad67c', shape: ['.XX', '.X.', 'XX.'] },
   ];
 
-  // Points for clearing 1, 2, 3, or 4 rows at once, multiplied by the current level.
-  const LINE_SCORES = [0, 100, 300, 500, 800];
+  // Points for clearing 1, 2, 3, 4, or 5 rows at once, multiplied by the current level.
+  const LINE_SCORES = [0, 100, 300, 500, 800, 1200];
   const LINES_PER_LEVEL = 10;
   // Offsets to try, in order, when a rotation is blocked: nudge sideways, then up (wall kicks).
   const KICKS = [[0, 0], [-1, 0], [1, 0], [-2, 0], [2, 0], [0, -1]];
