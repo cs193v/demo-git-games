@@ -4,7 +4,7 @@
 
   const CELL = 30; // pixels per board square
   const PREVIEW_CELL = 24; // pixels per square in the "Next" box
-  const CLEAR_NAMES = ['', 'Single', 'Double', 'Triple', 'Tetris!', 'Pentris!'];
+  const CLEAR_NAMES = ['', 'Single', 'Double', 'Triple', 'Tetris!'];
 
   // The row-clearing animation: full rows brighten to white, the white fades away, then the rows
   // above slide down into the gap. The game waits while it plays.
