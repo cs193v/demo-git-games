@@ -1,21 +1,19 @@
 // Unit tests for the puzzle rules in logic.js. These run in Node, without a browser.
 const { test, expect } = require('@playwright/test');
 const Jigsaw = require('../../logic.js');
-const { countLayouts, fitInOrder } = require('../helpers/tetravex.js');
 
 const ALL_PIECES = [...Array(16).keys()];
 const board = (index) => ({ area: 'board', index });
 const tray = (index) => ({ area: 'tray', index });
-const sameTile = (digit) => ({ top: digit, right: digit, bottom: digit, left: digit });
 
 test.describe('a new puzzle', () => {
-  test('has an empty board and all 16 tiles in the tray', () => {
+  test('has an empty board and all 16 pieces in the tray', () => {
     const puzzle = Jigsaw.createPuzzle(Jigsaw.makeRng(1));
     expect(puzzle.board).toEqual(Array(16).fill(null));
     expect(puzzle.tray.slice().sort((a, b) => a - b)).toEqual(ALL_PIECES);
   });
 
-  test('shuffles the tiles, differently each time', () => {
+  test('shuffles the pieces, differently each time', () => {
     const rng = Jigsaw.makeRng(2);
     const first = Jigsaw.createPuzzle(rng).tray;
     const second = Jigsaw.createPuzzle(rng).tray;
@@ -28,7 +26,7 @@ test.describe('a new puzzle', () => {
   });
 });
 
-test.describe('moving a tile', () => {
+test.describe('moving a piece', () => {
   const start = () => ({ board: Array(16).fill(null), tray: ALL_PIECES.slice() });
 
   test('from the tray to an empty square on the board', () => {
@@ -43,17 +41,27 @@ test.describe('moving a tile', () => {
     expect(puzzle.board[9]).toBe(5);
     expect(puzzle.board[0]).toBeNull();
     puzzle = Jigsaw.movePiece(puzzle, board(9), tray(5)); // back to its empty square in the tray
+    expect(puzzle.board[9]).toBeNull();
     expect(puzzle).toEqual(start());
   });
 
-  test('onto a square that has a tile makes them trade places', () => {
+  test('onto a square that has a piece makes them trade places', () => {
     let puzzle = Jigsaw.movePiece(start(), tray(1), board(3));
     puzzle = Jigsaw.movePiece(puzzle, tray(2), board(3));
     expect(puzzle.board[3]).toBe(2);
     expect(puzzle.tray[2]).toBe(1);
   });
 
-  test('never loses or copies a tile', () => {
+  test('onto the square it came from changes nothing', () => {
+    expect(Jigsaw.movePiece(start(), tray(4), tray(4))).toEqual(start());
+  });
+
+  test('from an empty square does nothing', () => {
+    const puzzle = Jigsaw.movePiece(start(), tray(7), board(7));
+    expect(Jigsaw.movePiece(puzzle, tray(7), board(0))).toEqual(puzzle);
+  });
+
+  test('never loses or copies a piece', () => {
     const rng = Jigsaw.makeRng(4);
     let puzzle = Jigsaw.createPuzzle(rng);
     for (let i = 0; i < 500; i++) {
@@ -63,89 +71,89 @@ test.describe('moving a tile', () => {
       expect(pieces.sort((a, b) => a - b)).toEqual(ALL_PIECES);
     }
   });
+
+  test('leaves the original puzzle alone', () => {
+    const puzzle = start();
+    Jigsaw.movePiece(puzzle, tray(0), board(0));
+    expect(puzzle).toEqual(start());
+  });
 });
 
 test.describe('solving', () => {
-  test('happens when every tile is on its own square of the board', () => {
+  test('happens when every piece is on its own square of the board', () => {
     expect(Jigsaw.isSolved({ board: ALL_PIECES, tray: Array(16).fill(null) })).toBe(true);
   });
 
-  test('needs every tile: 15 of 16 is not enough', () => {
+  test('needs every piece: 15 of 16 is not enough', () => {
     const board15 = ALL_PIECES.map((piece) => (piece === 9 ? null : piece));
     expect(Jigsaw.isSolved({ board: board15, tray: [9, ...Array(15).fill(null)] })).toBe(false);
   });
 
-  test('needs every tile in the right place', () => {
+  test('needs every piece in the right place', () => {
     const swapped = ALL_PIECES.slice();
     [swapped[0], swapped[1]] = [swapped[1], swapped[0]];
     expect(Jigsaw.isSolved({ board: swapped, tray: Array(16).fill(null) })).toBe(false);
   });
+
+  test('lets pieces that look alike go in each other\'s squares', () => {
+    const rotated = ALL_PIECES.slice();
+    [rotated[2], rotated[7], rotated[14]] = [7, 14, 2];
+    const puzzle = { board: rotated, tray: Array(16).fill(null) };
+    expect(Jigsaw.isSolved(puzzle, [[2, 7, 14]])).toBe(true);
+    expect(Jigsaw.isSolved(puzzle)).toBe(false); // unless they're said to look alike
+  });
+
+  test('still needs a look-alike to be in one of its own group\'s squares', () => {
+    const swapped = ALL_PIECES.slice();
+    [swapped[2], swapped[3]] = [3, 2]; // 3 isn't one of the look-alikes
+    expect(Jigsaw.isSolved({ board: swapped, tray: Array(16).fill(null) }, [[2, 7, 14]])).toBe(false);
+    const board15 = ALL_PIECES.map((piece) => (piece === 7 ? null : piece));
+    expect(Jigsaw.isSolved({ board: board15, tray: [7, ...Array(15).fill(null)] }, [[2, 7, 14]])).toBe(false);
+  });
+
+  test('piece n shows row n / 4, column n % 4 of the picture', () => {
+    expect([Jigsaw.pieceRow(0), Jigsaw.pieceCol(0)]).toEqual([0, 0]);
+    expect([Jigsaw.pieceRow(6), Jigsaw.pieceCol(6)]).toEqual([1, 2]);
+    expect([Jigsaw.pieceRow(15), Jigsaw.pieceCol(15)]).toEqual([3, 3]);
+  });
 });
 
-test.describe('tiles', () => {
-  test('are 16 tiles, each with a digit from 0 to 9 on every side', () => {
-    const tiles = Jigsaw.makeTiles(Jigsaw.makeRng(1));
-    expect(tiles).toHaveLength(16);
-    for (const tile of tiles) {
-      expect(Object.keys(tile).sort()).toEqual(['bottom', 'left', 'right', 'top']);
-      for (const digit of Object.values(tile)) expect(Number.isInteger(digit) && digit >= 0 && digit <= 9).toBe(true);
+test.describe('the order of the pictures', () => {
+  test('goes through all of them before repeating any', () => {
+    const rng = Jigsaw.makeRng(5);
+    let playlist = Jigsaw.createPlaylist(5, rng);
+    for (let round = 0; round < 10; round++) {
+      const seen = [];
+      for (let i = 0; i < 5; i++) {
+        seen.push(Jigsaw.currentPicture(playlist));
+        playlist = Jigsaw.nextPicture(playlist, rng);
+      }
+      expect(seen.sort()).toEqual([0, 1, 2, 3, 4]);
     }
   });
 
-  test('fit together in the order they were made', () => {
-    for (let seed = 1; seed <= 20; seed++) expect(fitInOrder(Jigsaw.makeTiles(Jigsaw.makeRng(seed)))).toBe(true);
-  });
-
-  test('use all ten digits, and are different every game', () => {
-    const tiles = Jigsaw.makeTiles(Jigsaw.makeRng(1));
-    const digits = new Set(tiles.flatMap((tile) => Object.values(tile)));
-    expect(digits.size).toBeGreaterThanOrEqual(8);
-    expect(Jigsaw.makeTiles(Jigsaw.makeRng(2))).not.toEqual(tiles);
-  });
-});
-
-test.describe('counting solutions', () => {
-  test('finds the layout the tiles were made in', () => {
-    expect(Jigsaw.countSolutions(Jigsaw.makeTiles(Jigsaw.makeRng(5)), 100)).toBeGreaterThanOrEqual(1);
-  });
-
-  test('counts tiles that look the same as different, and stops at the limit', () => {
-    const zeros = Array.from({ length: 16 }, () => sameTile(0)); // any layout works
-    expect(Jigsaw.countSolutions(zeros)).toBe(2);
-    expect(Jigsaw.countSolutions(zeros, 7)).toBe(7);
-  });
-
-  test('finds nothing when the tiles can\'t all fit', () => {
-    const tiles = Jigsaw.makeTiles(Jigsaw.makeRng(8));
-    tiles[5].top = (tiles[5].top + 1) % 10; // no longer matches the tile above it
-    expect(Jigsaw.countSolutions(tiles)).toBe(0);
-    expect(countLayouts(tiles)).toBe(0);
-  });
-
-  test('agrees with a separate solver', () => {
+  test('never shows the same picture twice in a row, even between rounds', () => {
     const rng = Jigsaw.makeRng(6);
-    for (let i = 0; i < 30; i++) {
-      // Few digits make many solutions, which gives the solvers something to disagree about.
-      const tiles = Jigsaw.makeTiles(() => rng() * 0.3);
-      expect(Math.min(Jigsaw.countSolutions(tiles, 3), 3)).toBe(countLayouts(tiles, 3));
-    }
-  });
-});
-
-test.describe('a TetraVex puzzle', () => {
-  test('always has exactly one solution: the order the tiles were made in', () => {
-    for (let seed = 1; seed <= 25; seed++) {
-      const tiles = Jigsaw.createTetravex(Jigsaw.makeRng(seed));
-      expect(fitInOrder(tiles), `seed ${seed}`).toBe(true);
-      expect(Jigsaw.countSolutions(tiles, 5), `seed ${seed}`).toBe(1);
-      expect(countLayouts(tiles, 5), `seed ${seed}`).toBe(1);
+    let playlist = Jigsaw.createPlaylist(5, rng);
+    for (let i = 0; i < 200; i++) {
+      const before = Jigsaw.currentPicture(playlist);
+      playlist = Jigsaw.nextPicture(playlist, rng);
+      expect(Jigsaw.currentPicture(playlist)).not.toBe(before);
     }
   });
 
-  test('never has two tiles exactly alike', () => {
-    for (let seed = 1; seed <= 25; seed++) {
-      const tiles = Jigsaw.createTetravex(Jigsaw.makeRng(seed)).map((tile) => JSON.stringify(tile));
-      expect(new Set(tiles).size).toBe(16);
+  test('is shuffled differently from one visit to the next', () => {
+    const orders = new Set();
+    for (let seed = 1; seed <= 10; seed++) orders.add(Jigsaw.createPlaylist(5, Jigsaw.makeRng(seed)).order.join());
+    expect(orders.size).toBeGreaterThan(5);
+  });
+
+  test('works with just one picture', () => {
+    const rng = Jigsaw.makeRng(7);
+    let playlist = Jigsaw.createPlaylist(1, rng);
+    for (let i = 0; i < 3; i++) {
+      expect(Jigsaw.currentPicture(playlist)).toBe(0);
+      playlist = Jigsaw.nextPicture(playlist, rng);
     }
   });
 });

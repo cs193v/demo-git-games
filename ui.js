@@ -1,29 +1,8 @@
-// Builds the board and the tray, and lets the player drag tiles between them. The rules are in
-// logic.js. (In the code, a tile is called a piece, like the jigsaw pieces it's modeled on.)
+// Builds the board and the tray, and lets the player drag pieces between them. The rules are in
+// logic.js, and the pictures are listed in pictures.js.
 (function () {
   'use strict';
 
-  // One color for each digit, from the resistor color code, and a text color that shows up on it.
-  const DIGIT_COLORS = [
-    { fill: '#2b2b2b', text: '#fff' }, // 0 black
-    { fill: '#8b5a2b', text: '#fff' }, // 1 brown
-    { fill: '#d93a3a', text: '#fff' }, // 2 red
-    { fill: '#f28c28', text: '#1d1d1d' }, // 3 orange
-    { fill: '#f5d547', text: '#1d1d1d' }, // 4 yellow
-    { fill: '#3aa655', text: '#fff' }, // 5 green
-    { fill: '#3b73d9', text: '#fff' }, // 6 blue
-    { fill: '#8e5bd1', text: '#fff' }, // 7 violet
-    { fill: '#9a9a9a', text: '#1d1d1d' }, // 8 gray
-    { fill: '#f7f7f2', text: '#1d1d1d' }, // 9 white
-  ];
-  // Each side of a tile is a triangle reaching to the middle. These are its corners in a 100 × 100
-  // box, and where its digit goes.
-  const SIDES = [
-    { side: 'top', points: '0,0 100,0 50,50', x: 50, y: 22 },
-    { side: 'right', points: '100,0 100,100 50,50', x: 79, y: 50 },
-    { side: 'bottom', points: '0,100 100,100 50,50', x: 50, y: 79 },
-    { side: 'left', points: '0,0 0,100 50,50', x: 21, y: 50 },
-  ];
   const GLIDE_MS = 160; // how long a dropped piece takes to settle into its square
 
   const boardGrid = document.getElementById('board');
@@ -45,15 +24,21 @@
     }
   }
 
-  let tiles; // tiles[n] is the { top, right, bottom, left } digits of tile n
+  nextButton.textContent = PICTURES.length > 1 ? 'Next puzzle' : 'Play again';
+
+  // Load every picture now, so each new puzzle appears at once.
+  for (const picture of PICTURES) new Image().src = picture.file;
+
+  let playlist = Jigsaw.createPlaylist(PICTURES.length, Math.random);
   let puzzle;
   let pieces; // pieces[n] is the element for piece n
   let solved;
   let drag = null; // the piece being dragged: { piece, from, x, y, target }
 
+  const currentPicture = () => PICTURES[Jigsaw.currentPicture(playlist)];
+
   function startPuzzle() {
-    tiles = Jigsaw.createTetravex(Math.random);
-    pieces = tiles.map((_, n) => makePiece(n));
+    pieces = Array.from({ length: Jigsaw.PIECES }, (_, n) => makePiece(n, currentPicture()));
     puzzle = Jigsaw.createPuzzle(Math.random);
     solved = false;
     win.classList.add('hidden');
@@ -61,18 +46,16 @@
     render();
   }
 
-  // A tile shows its four digits, each in a triangle of that digit's color.
-  function makePiece(n) {
+  // A piece shows its own square of the picture. The picture is drawn at 4 times the piece's
+  // size and shifted so the right part shows through.
+  function makePiece(n, picture) {
     const piece = document.createElement('div');
     piece.className = 'piece';
     piece.dataset.piece = n;
-    const sides = SIDES.map(({ side, points, x, y }) => {
-      const digit = tiles[n][side];
-      const { fill, text } = DIGIT_COLORS[digit];
-      return `<polygon points="${points}" fill="${fill}" data-side="${side}"></polygon>` +
-        `<text x="${x}" y="${y}" fill="${text}" data-side="${side}">${digit}</text>`;
-    });
-    piece.innerHTML = `<svg viewBox="0 0 100 100" aria-hidden="true">${sides.join('')}</svg>`;
+    piece.style.backgroundImage = `url("${picture.file}")`;
+    const x = (Jigsaw.pieceCol(n) * 100) / (Jigsaw.COLS - 1);
+    const y = (Jigsaw.pieceRow(n) * 100) / (Jigsaw.ROWS - 1);
+    piece.style.backgroundPosition = `${x}% ${y}%`;
     return piece;
   }
 
@@ -89,7 +72,7 @@
 
   function finish() {
     solved = true;
-    winText.textContent = 'Every edge matches!';
+    winText.textContent = `That's ${currentPicture().name}!`;
     win.classList.remove('hidden');
     document.body.classList.add('solved');
   }
@@ -155,7 +138,7 @@
     glide(piece, droppedAt);
     if (other && other !== piece) glide(other, otherWasAt);
 
-    if (Jigsaw.isSolved(puzzle)) finish();
+    if (Jigsaw.isSolved(puzzle, currentPicture().lookAlikes)) finish();
   }
 
   // Animates an element from where it was (`from`, a DOMRect) to where it is now. Board squares
@@ -172,13 +155,16 @@
     ], { duration: GLIDE_MS, easing: 'ease-out' });
   }
 
-  nextButton.addEventListener('click', startPuzzle);
+  nextButton.addEventListener('click', () => {
+    playlist = Jigsaw.nextPicture(playlist, Math.random);
+    startPuzzle();
+  });
 
   // For the end-to-end tests: lets them look at the puzzle and find the squares on the page.
   window.game = {
     get puzzle() { return puzzle; },
     get solved() { return solved; },
-    get tiles() { return tiles; },
+    get picture() { return currentPicture().file; },
     squareCenter(area, index) {
       const rect = squares[area][index].getBoundingClientRect();
       return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };

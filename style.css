@@ -132,33 +132,15 @@ h1 {
   pointer-events: none;
 }
 
-/* A piece is a tile: four colored triangles, each with a digit. */
+/* Each piece shows its part of the picture, which is drawn 4 times the piece's size. */
 .piece {
   width: 100%;
   height: 100%;
-  overflow: hidden;
+  background-size: 400% 400%;
+  background-repeat: no-repeat;
   cursor: grab;
-  touch-action: none; /* lets touch screens drag tiles instead of scrolling */
+  touch-action: none; /* lets touch screens drag pieces instead of scrolling */
   user-select: none;
-}
-
-.piece svg {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-.piece polygon {
-  stroke: rgba(0, 0, 0, 0.35);
-  stroke-width: 1.2;
-  stroke-linejoin: round;
-}
-
-.piece text {
-  font-size: 22px;
-  font-weight: 800;
-  text-anchor: middle;
-  dominant-baseline: central;
 }
 
 .tray .piece {
