@@ -11,6 +11,7 @@
     { file: 'images/red-panda.jpg', name: 'a red panda' },
     { file: 'images/ducklings.jpg', name: 'some ducklings' },
     { file: 'images/hedgehog.jpg', name: 'a hedgehog' },
+    { file: 'images/kirks-dikdik.jpg', name: "a Kirk's dik-dik" },
   ];
 
   if (typeof module === 'object' && module.exports) module.exports = PICTURES;
